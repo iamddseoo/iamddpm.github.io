@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>自动推送任务后台原型 v13</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f7;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif;font-size:14px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#1f2d3d;color:#cfd8e3;flex-shrink:0;padding:18px 0}
+.logo{color:#fff;font-weight:700;font-size:18px;padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.menu-title{padding:16px 20px 8px;color:#8191a5;font-size:12px}
+.menu-item{padding:12px 20px}
+.menu-item.active{background:#0f7bdc;color:#fff}
+.main{flex:1;min-width:1220px}
+.topbar{height:56px;background:#fff;border-bottom:1px solid #ddd;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:18px;margin:0}
+.content{padding:20px 24px 40px}
+.top-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.tabs{display:flex;gap:8px}
+.tab{border:1px solid #cfd6df;background:#fff;padding:9px 16px;border-radius:4px;color:#333;cursor:pointer}
+.tab.active{background:#0f7bdc;color:#fff;border-color:#0f7bdc}
+.page{display:none}.page.active{display:block}
+.card{background:#fff;border:1px solid #dcdfe6;border-radius:4px;margin-bottom:16px}
+.card-title{padding:12px 16px;border-bottom:1px solid #ebeef5;font-weight:700;background:#fafafa}
+.card-body{padding:16px}
+.form-grid{display:grid;grid-template-columns:90px 240px 90px 240px 90px 240px;gap:12px 10px;align-items:center}
+.form-grid.two{grid-template-columns:120px 300px 120px 300px}
+.date-range{display:flex;align-items:center;gap:8px;width:240px}
+.date-range input{width:112px;min-width:112px}
+label{color:#333;text-align:right}
+input,select,textarea{height:34px;border:1px solid #cfd6df;border-radius:4px;padding:0 10px;font-size:14px;background:#fff}
+textarea{height:66px;padding-top:8px;resize:none}
+input[disabled]{background:#eee;color:#555}
+.btn{display:inline-block;border:1px solid #0f7bdc;background:#0f7bdc;color:#fff;padding:7px 14px;border-radius:4px;margin-right:8px;text-decoration:none;cursor:pointer;line-height:1}
+.btn.secondary{background:#fff;color:#333;border-color:#cfd6df}
+.btn.warning{background:#e6a23c;border-color:#e6a23c}
+.btn.danger{background:#f56c6c;border-color:#f56c6c}
+.btn.small{padding:5px 10px}
+.muted{color:#777;font-size:12px}
+.help{color:#777;font-size:12px;margin-top:6px}
+.error{color:#d93026;font-size:12px;margin-top:8px;display:none;line-height:1.8}
+.section-table{border:1px solid #e5e5e5;border-bottom:0}
+.row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #e5e5e5;min-height:52px}
+.row .label{background:#fafafa;padding:14px 12px;text-align:right;border-right:1px solid #e5e5e5}
+.row .field{padding:10px 12px}
+.row .field input[type=text],.row .field input[type=date],.row .field input[type=time],.row .field select,.row .field textarea{width:460px;max-width:100%}
+.radios label,.checkboxes label{text-align:left;margin-right:22px;white-space:nowrap}
+.weekdays label{margin-right:18px;text-align:left}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #e5e5e5;padding:10px 8px;text-align:left;white-space:nowrap}
+th{background:#f7f8fa;font-weight:700}
+.table-actions a{color:#0f7bdc;margin-right:10px;cursor:pointer}
+.status{display:inline-block;padding:3px 8px;border-radius:10px;font-size:12px}
+.status.pending{background:#fff7e6;color:#d48806}
+.status.on{background:#e8f6ef;color:#1f9254}
+.status.off{background:#f2f3f5;color:#666}
+.status.success{background:#e8f6ef;color:#1f9254}
+.status.fail{background:#fdecec;color:#d93026}
+.empty-row td{text-align:center;color:#999;padding:28px}
+.footer-actions{text-align:center;margin-top:18px}
+.note-box{background:#fff;border:1px solid #dcdfe6;border-left:4px solid #0f7bdc;border-radius:4px;padding:14px 16px;margin-bottom:16px;line-height:1.8}
+.modal-mask{position:fixed;z-index:1000;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center}
+.modal-mask.show{display:flex}
+.modal{background:#fff;border-radius:6px;width:620px;box-shadow:0 8px 28px rgba(0,0,0,.3)}
+.modal.large{width:780px}
+.modal-hd{height:56px;border-bottom:1px solid #eee;padding:0 18px;display:flex;align-items:center;justify-content:space-between;font-size:20px;font-weight:700}
+.modal-hd .close{font-size:24px;color:#bbb;cursor:pointer}
+.modal-bd{padding:22px 24px;min-height:160px;max-height:70vh;overflow:auto}
+.modal-ft{border-top:1px solid #eee;background:#fafafa;padding:14px 18px;text-align:right;border-radius:0 0 6px 6px}
+.modal-form{display:grid;grid-template-columns:150px 260px 60px;gap:16px 10px;align-items:center}
+.modal-form label{text-align:right}
+.modal-form input{width:100%}
+.modal-form textarea{width:260px;height:210px}
+.flow{background:#fff;border:1px solid #dcdfe6;border-radius:4px;padding:18px;white-space:pre;line-height:1.8;font-family:Consolas,"Courier New",monospace}
+.sub-title{font-weight:700;margin:18px 0 10px}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:4px;display:none;z-index:2000}
+.toast.show{display:block}
+.action-cell{white-space:normal; min-width:280px}
+.op-btn{
+  display:inline-block;
+  min-width:62px;
+  text-align:center;
+  padding:7px 12px;
+  margin:0 8px 8px 0;
+  border-radius:5px;
+  color:#fff;
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+}
+.op-btn.green{background:#5cb85c;border:1px solid #4cae4c;}
+.op-btn.red{background:#d9534f;border:1px solid #c9302c;}
+.op-btn.gray{background:#f5f5f5;border:1px solid #d9d9d9;color:#333;}
+
+.rule-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:8px;border-radius:50%;background:#e8f3ff;color:#0f7bdc;border:1px solid #b9dcff;font-size:12px;font-weight:700;cursor:pointer;vertical-align:middle}
+.rule-note{display:none;margin:0 16px 12px;padding:12px 14px;border:1px dashed #9ecbff;background:#f5fbff;border-radius:4px;color:#333;line-height:1.8;font-size:13px;white-space:pre-line;text-align:left}
+.rule-note.show{display:block}
+.rule-note b{color:#0f7bdc}
+.rule-inline{display:inline-flex;align-items:center;margin-left:8px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">推送后台</div>
+    <div class="menu-title">自动推送</div>
+    <div class="menu-item active">自动推送任务</div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1>自动推送任务</h1>
+      <div class="muted">HTML Prototype v13</div>
+    </div>
+
+    <div class="content">
+      <div class="top-actions">
+        <div>
+          <div id="tabsWrap" class="tabs">
+            <button class="tab active" onclick="showTabPage('list', this)">任务列表</button>
+            <button class="tab" onclick="showTabPage('log', this)">推送日志</button>
+          </div>
+          <span id="editBackBtn" class="btn secondary" style="display:none;" onclick="showTabPage('list')">返回</span>
+        </div>
+        <span id="supplementBtn" class="btn secondary" onclick="openModal('supplementModal')">补充说明</span>
+      </div>
+
+      <section id="list" class="page active">
+        <div class="card">
+          <div class="card-title">筛选条件<span class="rule-icon" onclick="toggleRule('taskFilterRule')">?</span></div>
+          <div id="taskFilterRule" class="rule-note"><b>筛选规则：</b>
+• 任务ID：文本输入框，支持输入任务ID进行查询。
+• 任务名称：文本输入框，支持输入任务名称进行查询。
+• 任务状态：下拉选择框，选项包括「全部、待生效、已生效、已暂停」，默认选中「全部」。
+• 推送渠道：下拉选择框，选项包括「全部、系统消息、个推」，默认选中「全部」。
+• 执行结果：下拉选择框，选项包括「全部、成功、失败、未执行」，默认选中「全部」。
+• 创建日期：时间选择控件，支持选择开始日期和结束日期。
+• 支持多个筛选条件组合查询，用户填写多个筛选条件时，查询结果需要同时满足所有条件。
+• 仅选择开始日期时，查询创建日期大于等于开始日期的任务。
+• 仅选择结束日期时，查询创建日期小于等于结束日期的任务。
+• 同时选择开始日期和结束日期时，查询创建日期在该时间范围内的任务。
+• 点击「查询」后，列表展示符合筛选条件的任务。
+• 点击「重置」后，清空所有筛选条件，并恢复展示全部任务。
+• 若无符合条件的任务，列表展示空状态。</div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label>任务ID</label><input id="taskFilterId" placeholder="输入任务ID" />
+              <label>任务名称</label><input id="taskFilterName" placeholder="输入任务名称" />
+              <label>任务状态</label><select id="taskFilterStatus"><option>全部</option><option>待生效</option><option>已生效</option><option>已暂停</option></select>
+              <label>推送渠道</label><select id="taskFilterChannel"><option>全部</option><option>系统消息</option><option>个推</option></select>
+              <label>执行结果</label><select id="taskFilterResult"><option>全部</option><option>成功</option><option>失败</option><option>未执行</option></select>
+              <label>创建日期</label><div class="date-range"><input id="taskFilterCreateStart" type="date"><span>-</span><input id="taskFilterCreateEnd" type="date"></div>
+            </div>
+            <div style="margin-top:16px;">
+              <span class="btn" onclick="filterTasks()">查询</span><span class="btn secondary" onclick="resetTaskFilter()">重置</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body"><span class="btn" onclick="openEditPage('create')">新建自动推送任务</span><span class="rule-icon" onclick="toggleRule('newTaskRule')">?</span></div><div id="newTaskRule" class="rule-note"><b>新建规则：</b>
+• 点击「新建自动推送任务」后，进入新增推送配置页面。
+• 新增推送配置时，页面字段默认为空。
+• 新增任务保存成功后，在任务列表新增一条任务数据。
+• 新增任务保存成功后，任务状态默认为「待生效」。
+• 达到设置的生效时间后自动生效，状态转为「已生效」。</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">自动推送任务列表<span class="rule-icon" onclick="toggleRule('taskListFieldRule')">?</span></div>
+          <div id="taskListFieldRule" class="rule-note"><b>字段规则：</b>
+• 任务ID：展示自动推送任务创建后生成的唯一任务ID，由服务端生成。
+• 任务名称：展示运营在新增/编辑推送配置时填写的任务名称。
+• 推送渠道：展示该任务配置的推送渠道，若同时选择系统消息和个推，则展示「系统消息、个推」。
+• 推送对象：展示该任务配置的推送对象，可展示「预约用户-游戏名称、关注用户-游戏名称、大数据人群-人群名称」，对应名称从任务配置中读取。
+• 定时类型：展示该任务配置的定时类型，可展示「每日推送、指定时间段推送、指定周几推送」。
+• 推送日期：根据定时类型展示对应内容。每日推送展示「每日」；指定时间段推送展示「开始日期-结束日期」；指定周几推送展示已选择的星期，如「周一、周三、周五」。
+• 推送时间：展示该任务配置的固定时间点，数据来源为新增/编辑推送配置中的固定时间点。
+• 任务状态：展示当前任务状态，状态包括「待生效、已生效、已暂停」。
+• 创建人：展示创建该任务的后台操作人。
+• 创建时间：展示任务创建成功的时间。
+• 上次结果：展示该任务最近一次自动推送执行结果。若最近一次执行成功，展示「成功」；若最近一次执行失败，展示「失败」；若任务暂无执行记录，展示「未执行」。
+• 操作：展示该任务可执行操作，包括「试推、编辑、暂停/重新生效、查看日志」。
+
+<b>操作规则：</b>
+• 点击「试推」后，弹出试推弹窗，复用现有关注推送的试推功能。
+• 点击「编辑」后，进入编辑推送配置页面，并回显当前任务配置内容。
+• 非暂停状态展示「暂停」按钮；已暂停状态展示「重新生效」按钮。
+• 点击「暂停」后，任务状态变更为「已暂停」，按钮变更为「重新生效」。
+• 点击「重新生效」后，任务状态变更为「已生效」，按钮变更为「暂停」。
+• 点击「查看日志」后，跳转到推送日志列表，并自动带入当前任务ID，查询该任务ID下的所有日志。</div>
+          <table>
+            <thead>
+              <tr>
+                <th>任务ID</th><th>任务名称</th><th>推送渠道</th><th>推送对象</th>
+                <th>定时类型</th><th>推送日期</th><th>推送时间</th><th>任务状态</th><th>创建人</th><th>创建时间</th>
+                <th>上次结果</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="taskTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="edit" class="page">
+        <div class="card">
+          <div class="card-title"><span id="editTitle">新建自动推送任务</span><span class="rule-icon" onclick="toggleRule('basicRule')">?</span></div><div id="basicRule" class="rule-note"><b>基础信息规则：</b>
+• 任务名称：必填，文本输入框，用于填写自动推送任务名称。
+• 任务名称保存后展示在任务列表「任务名称」字段中。
+• 任务名称也作为推送日志中「推送对象」名称的读取来源。
+• 推送说明：选填，文本输入框，用于填写该任务的内部说明，仅用于后台查看和识别任务用途。
+• 修改推送配置时，页面需要回显当前任务已保存的配置信息。
+• 修改任务保存成功后，不改变当前任务状态。</div>
+          <div class="card-body">
+            <div class="section-table">
+              <div class="row"><div class="label">任务名称</div><div class="field"><input id="formTaskName" type="text" placeholder="请输入任务名称，如：三角洲每日密码" /></div></div>
+              <div class="row"><div class="label">推送说明</div><div class="field"><input id="formDesc" type="text" placeholder="请输入推送场景说明" /></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card"><div class="card-title">定时配置<span class="rule-icon" onclick="toggleRule('scheduleRule')">?</span></div><div id="scheduleRule" class="rule-note"><b>定时配置规则：</b>
+• 定时类型：单选控件，选项包括「每日推送、指定时间段推送、指定周几推送」。
+• 选择「每日推送」时，不展示推送日期。
+• 选择「指定时间段推送」时，推送日期展示「开始日期、结束日期」，以时间控件的形式，开始时间和结束时间均必填，时间控件限制到天维度。
+• 选择「指定周几推送」时，推送日期展示「周一、周二、周三、周四、周五、周六、周日」，以复选框的形式，至少需要勾选1个。
+• 推送时间：时间选择控件，展示时/分信息，用于配置该任务每天实际触发推送的固定时间点。
+• 一个任务仅支持配置一个固定推送时间点。
+• 「每日推送」按每天固定时间点执行。
+• 「指定时间段推送」按开始日期至结束日期内的每天固定时间点执行。
+• 「指定周几推送」按已选择星期的固定时间点执行。
+• 选择「指定时间段推送」时，开始日期最早只能选择明天。
+• 选择「指定时间段推送」时，结束日期不能早于开始日期。
+• 选择「指定时间段推送」时，时间段最短需要覆盖3天。
+• 选择「指定周几推送」时，至少需要选择1个日期。
+• 任务修改后，从下一次命中推送时间开始按最新配置执行。</div><div class="card-body"><div class="section-table">
+          <div class="row"><div class="label">定时类型</div><div class="field radios">
+            <label><input type="radio" name="scheduleType" value="每日推送" checked onchange="changeScheduleType()"> 每日推送</label>
+            <label><input type="radio" name="scheduleType" value="指定时间段推送" onchange="changeScheduleType()"> 指定时间段推送</label>
+            <label><input type="radio" name="scheduleType" value="指定周几推送" onchange="changeScheduleType()"> 指定周几推送</label>
+          </div></div>
+          <div id="dateRangeRow" class="row" style="display:none"><div class="label">推送日期</div><div class="field">
+            <input id="formStartDate" type="date" style="width:220px" /> -
+            <input id="formEndDate" type="date" style="width:220px" />
+            <div class="help">开始日期最早只能选择明天；结束日期不能早于开始日期；指定时间段最短需要覆盖3天。</div>
+          </div></div>
+          <div id="weekRow" class="row" style="display:none"><div class="label">推送星期</div><div class="field weekdays">
+            <label><input type="checkbox" name="week" value="周一"> 周一</label>
+            <label><input type="checkbox" name="week" value="周二"> 周二</label>
+            <label><input type="checkbox" name="week" value="周三"> 周三</label>
+            <label><input type="checkbox" name="week" value="周四"> 周四</label>
+            <label><input type="checkbox" name="week" value="周五"> 周五</label>
+            <label><input type="checkbox" name="week" value="周六"> 周六</label>
+            <label><input type="checkbox" name="week" value="周日"> 周日</label>
+          </div></div>
+          <div class="row"><div class="label">固定时间点</div><div class="field"><input id="formPushTime" type="time" /><div class="help">三种定时类型都需要配置固定时间点；一个任务仅支持一个固定时间点。</div></div></div>
+        </div>
+        </div></div>
+
+        <div class="card"><div class="card-title">推送对象<span class="rule-icon" onclick="toggleRule('targetRule')">?</span></div><div id="targetRule" class="rule-note"><b>推送对象规则：</b>
+• 推送对象类型包括「预约用户、关注用户、大数据人群」，可复用「已有大数据推送中的弹窗」。
+• 预约用户：通过「添加预约游戏」配置，配置成功后，该任务推送对象为预约该游戏的用户。
+• 关注用户：通过「添加关注游戏」配置，配置成功后，该任务推送对象为关注该游戏的用户。
+• 大数据人群：通过「获取人群」配置，配置成功后，该任务推送对象为该大数据人群内用户。
+• 预约用户配置弹窗：点击「添加预约游戏」后，弹出添加预约游戏弹窗。弹窗内输入游戏ID后点击「获取」，获取成功后回填游戏名称、游戏状态、预约人数，点击「确定」后保存为当前任务推送对象。
+• 关注用户配置弹窗：点击「添加关注游戏」后，弹出添加游戏弹窗。弹窗支持「添加游戏、批量添加游戏」；单个添加时，输入游戏ID后点击「获取」，获取成功后回填游戏名称；批量添加时，支持输入多个游戏ID，点击「确定」后保存为当前任务推送对象。
+• 大数据人群配置弹窗：点击「获取人群」后，弹出获取人群弹窗。弹窗内输入人群名称后点击「获取」，获取成功后回填人群显示名、用户标识、人数，点击「确定」后保存为当前任务推送对象。
+• 配置完成后，任务列表「推送对象」字段展示为「预约用户-游戏名称、关注用户-游戏名称、大数据人群-人群名称」。
+• 推送对象不能为空。
+• 「预约用户」「关注用户」「大数据人群」弹窗内的内部校验，以历史需求为准。</div><div class="card-body"><div class="section-table">
+          <div class="row"><div class="label">推送对象类型</div><div class="field radios">
+            <label><input type="radio" name="target" value="预约用户" checked> 预约用户</label>
+            <label><input type="radio" name="target" value="关注用户"> 关注用户</label>
+            <label><input type="radio" name="target" value="大数据人群"> 大数据人群</label>
+          </div></div>
+          <div class="row"><div class="label">预约用户</div><div class="field"><span class="btn" onclick="openModal('reserveGameModal')">添加预约游戏</span><span class="btn secondary" onclick="clearReserveGame()">清除</span><span id="reserveSummary" class="muted">已选择后展示：游戏名称 / 游戏ID / 游戏状态 / 预约人数</span></div></div>
+          <div class="row"><div class="label">关注用户</div><div class="field"><span class="btn" onclick="openModal('followGameModal')">添加关注游戏</span><span class="btn secondary" onclick="clearFollowGame()">清除</span><span id="followSummary" class="muted">已选择后展示：游戏名称 / 游戏ID</span></div></div>
+          <div class="row"><div class="label">大数据人群</div><div class="field"><span class="btn" onclick="openModal('peopleModal')">获取人群</span><span id="peopleSummary" class="muted">已选择后展示：人群名称 / 用户标识 / 人数</span></div></div>
+        </div></div></div>
+
+        <div class="card"><div class="card-title">推送渠道<span class="rule-icon" onclick="toggleRule('channelRule')">?</span></div><div id="channelRule" class="rule-note"><b>推送渠道规则：</b>
+• 推送渠道包括「系统消息、个推」。
+• 勾选「系统消息」后，展示系统消息配置模块。
+• 勾选「个推」后，展示个推配置模块。
+• 推送渠道不能为空。
+• 支持同时选择「系统消息」和「个推」。</div><div class="card-body"><div class="section-table">
+          <div class="row"><div class="label">推送选择</div><div class="field checkboxes">
+            <label><input type="checkbox" name="channel" value="系统消息" checked> 系统消息</label>
+            <label><input type="checkbox" name="channel" value="个推" checked> 个推</label>
+          </div></div>
+        </div></div></div>
+
+        <div class="card"><div class="card-title">系统消息配置（选择系统消息后展示，复用现有表单）<span class="rule-icon" onclick="toggleRule('sysRule')">?</span></div><div id="sysRule" class="rule-note"><b>系统消息配置规则：</b>
+• 选择「系统消息」后，展示系统消息配置模块。
+• 系统消息配置复用现有推送后台表单能力。
+• 字段包括「消息类型、类型ID、私信标题、私信内容、私信大图、接口类型、接口ID、跳转链接、扩展参数、消息属性分类、消息推送类型、推送参数」。
+• 字段含义沿用现有系统消息推送配置。
+• 选择「系统消息」时，系统消息配置的非空判断，以历史校验规则为准。
+• 弹窗提示语复用历史校验提示。</div><div class="card-body"><div class="section-table">
+          <div class="row"><div class="label">消息类型</div><div class="field radios"><label><input type="radio" checked> 通用类型</label><select style="width:180px"><option>无标签</option></select><label><input type="radio"> 招募类型</label><select style="width:180px"><option>开启招募</option></select><label><input type="radio"> 获奖类型</label><label><input type="radio"> 优惠类型</label></div></div>
+          <div class="row"><div class="label">类型ID</div><div class="field"><input type="text"><div class="muted">招募、优惠类型填写，规则：填写游戏ID</div></div></div>
+          <div class="row"><div class="label">私信标题</div><div class="field"><input id="sysTitle" type="text" placeholder="0/36"></div></div>
+          <div class="row"><div class="label">私信内容</div><div class="field"><textarea id="sysContent" placeholder="0/84"></textarea><br><span class="btn secondary">添加推荐语</span></div></div>
+          <div class="row"><div class="label">私信大图</div><div class="field"><input type="text" placeholder="图片地址/上传图片"></div></div>
+          <div class="row"><div class="label">接口类型</div><div class="field"><select><option>未设定类型</option></select><span class="btn">预览</span></div></div>
+          <div class="row"><div class="label">接口ID</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">跳转链接</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">扩展参数</div><div class="field"><input type="text"><div class="muted">评价详情页使用：类型,游戏ID；招募使用：zhaomu,游戏ID</div></div></div>
+          <div class="row"><div class="label">消息属性分类</div><div class="field"><select><option>资讯动态（社区·关注）</option></select></div></div>
+          <div class="row"><div class="label">消息推送类型</div><div class="field"><select><option>资讯动态-游戏官方</option></select></div></div>
+          <div class="row"><div class="label">推送参数</div><div class="field"><input type="text"><div class="muted">系统类型通知可不填，游戏官方需要填写游戏ID，个人需要填写UID，厂商需要填写厂商ID</div></div></div>
+        </div></div></div>
+
+        <div class="card"><div class="card-title">个推配置（选择个推后展示，复用现有表单）<span class="rule-icon" onclick="toggleRule('pushRule')">?</span></div><div id="pushRule" class="rule-note"><b>个推配置规则：</b>
+• 选择「个推」后，展示个推配置模块。
+• 个推配置复用现有推送后台表单能力。
+• 字段包括「个推送分类、个推送ticker、个推送LOGO、个推送大图、个推送标题、个推送描述、个推送接口类型、个推送接口ID、个推送链接、个推送安卓ID、个推送安卓链接、个推送有效期」。
+• 字段含义沿用现有个推配置。
+• 选择「个推」时，个推配置的非空判断，以历史校验规则为准。
+• 弹窗提示语复用历史校验提示。</div><div class="card-body"><div class="section-table">
+          <div class="row"><div class="label">个推送分类</div><div class="field radios"><label><input type="radio" checked> 重要热点资讯专属通知</label><label><input type="radio"> 预约游戏重要消息通知</label></div></div>
+          <div class="row"><div class="label">个推送ticker</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">个推送LOGO</div><div class="field"><input type="text"><div class="help">建议：40dp x 40dp，文件大小512kb，圆角8dp</div></div></div>
+          <div class="row"><div class="label">个推送大图</div><div class="field"><input type="text"><div class="help">建议：430*230，小于200KB</div></div></div>
+          <div class="row"><div class="label">个推送标题</div><div class="field"><input id="pushTitle" type="text" placeholder="0/20"></div></div>
+          <div class="row"><div class="label">个推送描述</div><div class="field"><textarea id="pushDesc" placeholder="0/50"></textarea><br><span class="btn secondary">添加推荐语</span></div></div>
+          <div class="row"><div class="label">个推送接口类型</div><div class="field"><select><option>未设定类型</option></select><span class="btn">预览</span></div></div>
+          <div class="row"><div class="label">个推送接口ID</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">个推送链接</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">个推送安卓ID</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">个推送安卓链接</div><div class="field"><input type="text"></div></div>
+          <div class="row"><div class="label">个推送有效期</div><div class="field"><input type="text"><div class="help">填0-72之间，单位小时；0或超出72默认72</div></div></div>
+        </div></div></div>
+
+        <div class="footer-actions"><span class="btn" onclick="saveTask()">保存</span><span class="rule-icon" onclick="toggleRule('saveRule')">?</span><span class="btn secondary" onclick="showTabPage('list')">返回</span></div>
+        <div id="saveRule" class="rule-note" style="margin-top:12px;"><b>保存规则：</b>
+• 页面底部展示「保存」按钮。
+• 点击「保存」后，需要校验当前配置内容。
+• 任务名称不能为空。
+• 定时类型不能为空。
+• 推送对象不能为空。
+• 推送渠道不能为空。
+• 选择「指定时间段推送」时，开始日期不能为空。
+• 选择「指定时间段推送」时，结束日期不能为空。
+• 选择「指定时间段推送」时，开始日期最早只能选择明天。
+• 选择「指定时间段推送」时，结束日期不能早于开始日期。
+• 选择「指定时间段推送」时，时间段最短需要覆盖3天。
+• 选择「指定周几推送」时，至少需要选择1个日期。
+• 定时配置中的「固定时间点」不能为空。
+• 选择「系统消息」时，系统消息核心内容不能为空，以历史校验规则为准，弹窗提示语也复用。
+• 选择「个推」时，个推核心内容不能为空，以历史校验规则为准，弹窗提示语也复用。
+• 保存失败时，使用弹窗提示失败原因，关闭弹窗后停留在当前页面。
+• 保存成功时，使用弹窗提示保存成功，点击「确定」后返回自动推送任务列表。
+• 新增任务保存成功后，在任务列表新增一条任务数据。
+• 修改任务保存成功后，更新任务列表对应任务数据。
+• 修改任务保存成功后，不改变当前任务状态。
+• 新增任务保存成功后，任务状态默认为「待生效」，达到设置的生效时间后自动生效，状态转为「已生效」。</div>
+      </section>
+
+      <section id="log" class="page">
+        <div class="card"><div class="card-title">日志筛选<span class="rule-icon" onclick="toggleRule('logFilterRule')">?</span></div><div id="logFilterRule" class="rule-note"><b>筛选规则：</b>
+• 任务ID：文本输入框，支持输入任务ID进行查询。
+• 任务名称：文本输入框，支持输入任务名称进行查询。
+• 执行状态：下拉选择框，选项包括「全部、成功、失败、未执行」，默认选中「全部」。
+• 推送渠道：下拉选择框，选项包括「全部、系统消息、个推」，默认选中「全部」。
+• 推送日期：时间选择控件，支持选择开始日期和结束日期。
+• 支持多个筛选条件组合查询，用户填写多个筛选条件时，查询结果需要同时满足所有条件。
+• 仅选择开始日期时，查询推送日期大于等于开始日期的日志。
+• 仅选择结束日期时，查询推送日期小于等于结束日期的日志。
+• 同时选择开始日期和结束日期时，查询推送日期在该时间范围内的日志。
+• 点击「查询」后，日志列表展示符合筛选条件的日志。
+• 点击「重置」后，清空所有筛选条件，并恢复展示全部日志。
+• 若无符合条件的日志，列表展示空状态。</div><div class="card-body">
+          <div class="form-grid two">
+            <label>任务ID</label><input id="logTaskId" placeholder="输入任务ID">
+            <label>任务名称</label><input id="logTaskName" placeholder="输入任务名称">
+            <label>执行状态</label><select id="logStatus"><option>全部</option><option>成功</option><option>失败</option><option>未执行</option></select>
+            <label>推送渠道</label><select id="logChannel"><option>全部</option><option>系统消息</option><option>个推</option></select>
+            <label>推送日期</label><div class="date-range"><input id="logStartDate" type="date"><span>-</span><input id="logEndDate" type="date"></div>
+          </div>
+          <div style="margin-top:16px;"><span class="btn" onclick="filterLogs()">查询</span><span class="btn secondary" onclick="resetLogFilter()">重置</span></div>
+        </div></div>
+        <div class="card"><div class="card-title">自动推送日志<span class="rule-icon" onclick="toggleRule('logListRule')">?</span></div><div id="logListRule" class="rule-note"><b>字段规则：</b>
+• 日志ID：展示本次推送日志生成后的唯一日志ID，由服务端生成。
+• 任务ID：展示当前日志对应的自动推送任务ID，数据来源为自动推送任务。
+• 任务名称：展示当前日志对应的自动推送任务名称，数据来源为自动推送任务配置。
+• 计划推送时间：展示该任务本次计划执行推送的时间，数据来源为任务定时配置计算结果。
+• 实际推送开始时间：展示服务端开始执行本次推送任务的时间，数据来源为本次推送实际脚本的开始推送时间。
+• 实际推送结束时间：展示服务端完成本次推送任务的时间，数据来源为本次推送实际脚本的结束推送时间。
+• 推送渠道：展示本次任务实际执行的推送渠道，可展示「系统消息、个推」。若同时执行多个渠道，则展示「系统消息、个推」。
+• 推送对象：展示本次任务执行时的推送对象，可展示「预约用户-任务名称、关注用户-任务名称、大数据人群-任务名称」，对应名称读取当前日志所属任务的任务名称。
+• 执行状态：展示本次推送执行结果，状态包括「成功、失败、未执行」。
+• 推送人数：展示本次任务实际推送的用户数。若执行失败且未推送成功，则展示「0」。
+• 日志数据由服务端在自动推送任务每次命中执行后生成，并展示到推送日志列表。</div>
+          <div class="card-body" style="padding:10px 16px;"><span class="muted">从任务列表点击「查看日志」后，会自动带入对应任务ID，并只展示该任务ID下的日志；若未查询到对应任务ID的日志，则列表显示为空。</span></div>
+          <table>
+            <thead><tr><th>日志ID</th><th>任务ID</th><th>任务名称</th><th>计划推送时间</th><th>实际推送开始时间</th><th>实际推送结束时间</th><th>推送渠道</th><th>推送对象</th><th>执行状态</th><th>推送人数</th></tr></thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+
+<!-- 保存提示弹窗 -->
+<div id="saveAlertModal" class="modal-mask">
+  <div class="modal">
+    <div class="modal-hd"><span id="saveAlertTitle">提示</span><span class="close" onclick="closeSaveAlert()">×</span></div>
+    <div class="modal-bd">
+      <div id="saveAlertContent" style="line-height:1.9;"></div>
+    </div>
+    <div class="modal-ft"><span class="btn" onclick="closeSaveAlert()">确定</span></div>
+  </div>
+</div>
+
+<!-- 获取人群弹窗 -->
+<div id="peopleModal" class="modal-mask">
+  <div class="modal">
+    <div class="modal-hd"><span>获取人群</span><span class="close" onclick="closeModal('peopleModal')">×</span></div>
+    <div class="modal-bd">
+      <div class="modal-form">
+        <label>人群名称</label><input id="peopleNameInput" type="text"><span style="color:#0f7bdc;cursor:pointer" onclick="mockPeople()">获取</span>
+        <label>人群显示名</label><input id="peopleDisplay" type="text" disabled><span></span>
+        <label>用户标识</label><input id="peopleKey" type="text" disabled><span></span>
+        <label>人数</label><input id="peopleCount" type="text" disabled><span></span>
+      </div>
+    </div>
+    <div class="modal-ft"><span class="btn secondary" onclick="closeModal('peopleModal')">取消</span><span class="btn" onclick="confirmPeople()">确定</span></div>
+  </div>
+</div>
+
+<!-- 添加关注游戏弹窗 -->
+<div id="followGameModal" class="modal-mask">
+  <div class="modal large">
+    <div class="modal-hd"><span><a style="color:#0f7bdc;text-decoration:none;cursor:pointer" onclick="showFollowSingle()">添加游戏</a> | <a style="color:#0f7bdc;text-decoration:none;cursor:pointer" onclick="showFollowBatch()">批量添加游戏</a></span><span class="close" onclick="closeModal('followGameModal')">×</span></div>
+    <div class="modal-bd">
+      <div id="followSingle">
+        <div class="modal-form">
+          <label>游戏ID</label><input id="followGameId" type="text" placeholder="请输入游戏ID"><span style="color:#0f7bdc;cursor:pointer" onclick="mockFollowGame()">获取</span>
+          <label>游戏名称</label><input id="followGameName" type="text" disabled><span></span>
+        </div>
+      </div>
+      <div id="followBatch" style="display:none">
+        <div class="modal-form">
+          <label style="align-self:start;margin-top:8px">游戏ID</label><textarea id="followBatchIds" placeholder="请输入游戏ID，多个ID按换行分隔"></textarea><span></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft"><span class="btn secondary" onclick="closeModal('followGameModal')">取消</span><span class="btn" onclick="confirmFollowGame()">确定</span></div>
+  </div>
+</div>
+
+<!-- 添加预约游戏弹窗 -->
+<div id="reserveGameModal" class="modal-mask">
+  <div class="modal">
+    <div class="modal-hd"><span>添加预约游戏</span><span class="close" onclick="closeModal('reserveGameModal')">×</span></div>
+    <div class="modal-bd">
+      <div class="modal-form">
+        <label>游戏ID：</label><input id="reserveGameId" type="text" placeholder="请输入游戏ID"><span style="color:#0f7bdc;cursor:pointer" onclick="mockReserveGame()">获取</span>
+        <label>游戏名称：</label><input id="reserveGameName" type="text" disabled><span></span>
+        <label>游戏状态：</label><input id="reserveGameStatus" type="text" disabled><span></span>
+        <label>预约人数：</label><input id="reserveGameCount" type="text" disabled><span></span>
+      </div>
+    </div>
+    <div class="modal-ft"><span class="btn secondary" onclick="closeModal('reserveGameModal')">取消</span><span class="btn" onclick="confirmReserveGame()">确定</span></div>
+  </div>
+</div>
+
+
+<!-- 试推弹窗 -->
+<div id="trialModal" class="modal-mask">
+  <div class="modal large" style="width:880px;">
+    <div class="modal-hd"><span>试推</span><span class="close" onclick="closeModal('trialModal')">×</span></div>
+    <div class="modal-bd" style="padding:0;max-height:80vh;overflow:auto;">
+      <div style="padding:18px 20px;border-bottom:1px solid #e5e5e5;background:#fff;">
+        <div class="muted">当前任务：<span id="trialTaskInfo">--</span></div>
+      </div>
+
+      <div class="section-table" style="border-left:0;border-right:0;border-top:0;">
+        <div class="row" style="grid-template-columns:190px 1fr;">
+          <div class="label" style="line-height:1.6;">填写UID获取试推参数<br>（1行1个，最多100个）</div>
+          <div class="field">
+            <textarea id="trialUidInput" style="width:560px;height:92px;resize:vertical;" placeholder="请输入UID，一行一个，最多100个"></textarea><br>
+            <span class="btn small" onclick="mockTrialFetch()">获取</span>
+          </div>
+        </div>
+        <div class="row" style="grid-template-columns:190px 1fr;">
+          <div class="label" style="line-height:1.6;background:#f0f0f0;">推送用户<br>（1行1个，最多100个）</div>
+          <div class="field" style="background:#f0f0f0;">
+            <div style="margin-bottom:8px;">UID,GTDEVICE</div>
+            <textarea id="trialPushUsers" style="width:560px;height:230px;resize:vertical;" placeholder="获取后回填试推参数，或通过试推分组快捷使用"></textarea>
+            <div style="color:#e60000;font-size:12px;margin-top:8px;">格式：发送用户数据格式一致，使用“;”分隔，若不一致则无法推送成功</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:10px 20px 16px;text-align:center;border-bottom:1px solid #e5e5e5;background:#fff;">
+        <span class="btn" onclick="confirmTrialPush()">确定</span>
+        <span class="btn secondary" onclick="closeModal('trialModal')">关闭</span>
+      </div>
+
+      <div style="padding:18px 20px;background:#fff;">
+        <span class="btn" onclick="addTrialGroup()">添加试推分组</span>
+      </div>
+
+      <div style="padding:0 20px 22px;background:#fff;">
+        <table>
+          <thead><tr><th style="width:40%;">分组名称</th><th>操作</th></tr></thead>
+          <tbody id="trialGroupTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- 补充说明弹窗 -->
+<div id="supplementModal" class="modal-mask">
+  <div class="modal large">
+    <div class="modal-hd"><span>补充说明</span><span class="close" onclick="closeModal('supplementModal')">×</span></div>
+    <div class="modal-bd">
+      <div class="sub-title">状态及操作规则</div>
+      <div class="note-box">
+        任务列表操作包括：试推、编辑、暂停/重新生效、查看日志。<br>
+        点击编辑：跳转编辑任务页。<br>
+        点击暂停/重新生效：按钮互斥，点击后直接变更状态和按钮。非暂停状态展示暂停；已暂停状态展示重新生效。<br>
+        点击查看日志：自动带入任务ID，只查询该任务ID下的所有日志；未查询到则展示空列表。
+      </div>
+      <div class="sub-title">定时配置规则</div>
+      <div class="note-box">
+        每日推送：只需要配置固定时间点。<br>
+        指定时间段推送：需要配置开始日期、结束日期、固定时间点；开始日期最早为明天；结束日期不能早于开始日期；时间段最短覆盖3天。<br>
+        指定周几推送：需要至少选择一个星期，且配置固定时间点。<br>
+        三种类型均只支持一个固定时间点。
+      </div>
+      <div class="sub-title">流程说明</div>
+      <div class="flow">自动推送任务列表
+  ├─ 新建自动推送任务
+  │   ├─ 填写基础信息
+  │   ├─ 选择定时类型：每日推送 / 指定时间段推送 / 指定周几推送
+  │   ├─ 配置推送对象
+  │   │   ├─ 预约用户：打开添加预约游戏弹窗
+  │   │   ├─ 关注用户：打开添加游戏/批量添加游戏弹窗
+  │   │   └─ 大数据人群：打开获取人群弹窗
+  │   ├─ 选择推送渠道：系统消息 / 个推
+  │   ├─ 复用现有表单填写系统消息 / 个推内容
+  │   └─ 保存后任务进入列表，默认待生效
+  ├─ 编辑
+  │   └─ 跳转到编辑任务页面，保存后更新列表
+  ├─ 暂停 / 重新生效
+  │   ├─ 点击暂停：状态转为已暂停，按钮变更为重新生效
+  │   └─ 点击重新生效：状态转为已生效，按钮变更为暂停
+  └─ 查看日志
+      └─ 自动带入任务ID，查询该任务ID下所有日志</div>
+    </div>
+    <div class="modal-ft"><span class="btn" onclick="closeModal('supplementModal')">知道了</span></div>
+  </div>
+</div>
+
+<script>
+let tasks = [
+  {id:'1001', name:'三角洲每日密码', desc:'每日密码提醒', channels:['系统消息','个推'], target:'预约用户', targetName:'三角洲行动', scheduleType:'每日推送', dateText:'每日', pushTime:'10:00', status:'待生效', creator:'张三', createTime:'2026-06-12 15:30', createDate:'2026-06-12', modifier:'--', modifyTime:'--', lastResult:'未执行'},
+  {id:'1002', name:'远行商人提醒', desc:'每日玩法提醒', channels:['系统消息'], target:'关注用户', targetName:'洛克王国：世界', scheduleType:'指定时间段推送', dateText:'2026-06-13~2026-07-12', pushTime:'12:00', status:'已生效', creator:'张三', createTime:'2026-06-11 18:00', createDate:'2026-06-11', modifier:'李四', modifyTime:'2026-06-12 10:00', lastResult:'成功'},
+  {id:'1003', name:'重点用户召回', desc:'大数据人群提醒', channels:['个推'], target:'大数据人群', targetName:'三角洲活跃召回人群', scheduleType:'指定周几推送', dateText:'周一、周三、周五', pushTime:'18:00', status:'已暂停', creator:'王五', createTime:'2026-06-11 19:00', createDate:'2026-06-11', modifier:'王五', modifyTime:'2026-06-12 11:00', lastResult:'失败'}
+];
+let logs = [
+  {id:'2001', taskId:'1002', taskName:'远行商人提醒', plan:'2026-06-13 12:00', actualStart:'2026-06-13 12:00:03', actualEnd:'2026-06-13 12:00:06', channel:'系统消息', target:'关注用户', status:'成功', count:'123456', date:'2026-06-13'},
+  {id:'2003', taskId:'1002', taskName:'远行商人提醒', plan:'2026-06-14 12:00', actualStart:'2026-06-14 12:00:02', actualEnd:'2026-06-14 12:00:04', channel:'系统消息', target:'关注用户', status:'成功', count:'118902', date:'2026-06-14'},
+  {id:'2002', taskId:'1003', taskName:'重点用户召回', plan:'2026-06-13 18:00', actualStart:'2026-06-13 18:00:02', actualEnd:'2026-06-13 18:00:04', channel:'个推', target:'大数据人群', status:'失败', count:'0', date:'2026-06-13'}
+];
+let editId = null;
+let selectedReserveGame = null;
+let selectedFollowGame = null;
+let selectedPeople = null;
+
+
+function toggleRule(id){
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle('show');
+}
+function setTopMode(mode){
+  const tabs = document.getElementById('tabsWrap');
+  const back = document.getElementById('editBackBtn');
+  const supplement = document.getElementById('supplementBtn');
+  if(!tabs || !back || !supplement) return;
+  if(mode === 'edit'){
+    tabs.style.display = 'none';
+    back.style.display = 'inline-block';
+    supplement.style.display = 'none';
+  }else{
+    tabs.style.display = 'flex';
+    back.style.display = 'none';
+    supplement.style.display = 'inline-block';
+  }
+}
+function formatTargetDisplay(task){
+  return task.targetName ? `${task.target}-${task.targetName}` : task.target;
+}
+function formatLogTargetDisplay(log){
+  return `${log.target}-${log.taskName}`;
+}
+let saveAlertBackToList = false;
+function openSaveAlert(title, content, backToList){
+  saveAlertBackToList = !!backToList;
+  document.getElementById('saveAlertTitle').textContent = title;
+  document.getElementById('saveAlertContent').innerHTML = content;
+  openModal('saveAlertModal');
+}
+function closeSaveAlert(){
+  closeModal('saveAlertModal');
+  if(saveAlertBackToList){
+    saveAlertBackToList = false;
+    showTabPage('list');
+  }
+}
+
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),1800);
+}
+function statusClass(status){
+  if(status==='待生效') return 'pending';
+  if(status==='已生效') return 'on';
+  return 'off';
+}
+function resultClass(result){
+  if(result==='成功') return 'success';
+  if(result==='失败') return 'fail';
+  return 'pending';
+}
+function renderTasks(data = tasks){
+  const body = document.getElementById('taskTableBody');
+  body.innerHTML = '';
+  if(!data.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="12">暂无符合条件的自动推送任务</td></tr>';
+    return;
+  }
+  data.forEach(t=>{
+    const actionText = t.status === '已暂停' ? '重新生效' : '暂停';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.id}</td><td>${t.name}</td><td>${t.channels.join('、')}</td><td>${formatTargetDisplay(t)}</td>
+      <td>${t.scheduleType}</td><td>${t.dateText}</td><td>${t.pushTime}</td><td><span class="status ${statusClass(t.status)}">${t.status}</span></td>
+      <td>${t.creator}</td><td>${t.createTime}</td><td><span class="status ${resultClass(t.lastResult)}">${t.lastResult}</span></td>
+      <td class="action-cell">
+        <span class="op-btn green" onclick="openTrialModal('${t.id}','${t.name}')">试推</span>
+        <span class="op-btn red" onclick="openEditPage('edit','${t.id}')">编辑</span>
+        <span class="op-btn gray" onclick="toggleTaskStatus('${t.id}')">${actionText}</span>
+        <span class="op-btn gray" onclick="openTaskLog('${t.id}')">查看日志</span>
+      </td>`;
+    body.appendChild(tr);
+  });
+}
+function filterTasks(){
+  const id = document.getElementById('taskFilterId').value.trim();
+  const name = document.getElementById('taskFilterName').value.trim();
+  const status = document.getElementById('taskFilterStatus').value;
+  const channel = document.getElementById('taskFilterChannel').value;
+  const result = document.getElementById('taskFilterResult').value;
+  const start = document.getElementById('taskFilterCreateStart').value;
+  const end = document.getElementById('taskFilterCreateEnd').value;
+  const data = tasks.filter(t=>{
+    if(id && !t.id.includes(id)) return false;
+    if(name && !t.name.includes(name)) return false;
+    if(status !== '全部' && t.status !== status) return false;
+    if(channel !== '全部' && !t.channels.includes(channel)) return false;
+    if(result !== '全部' && t.lastResult !== result) return false;
+    if(start && t.createDate < start) return false;
+    if(end && t.createDate > end) return false;
+    return true;
+  });
+  renderTasks(data);
+}
+function resetTaskFilter(){
+  ['taskFilterId','taskFilterName','taskFilterCreateStart','taskFilterCreateEnd'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('taskFilterStatus').value='全部';
+  document.getElementById('taskFilterChannel').value='全部';
+  document.getElementById('taskFilterResult').value='全部';
+  renderTasks();
+}
+function showTabPage(id, btn){
+  setTopMode('tab');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else {
+    const map = {list:0, log:1};
+    if(id in map) document.querySelectorAll('.tab')[map[id]].classList.add('active');
+  }
+  window.scrollTo(0,0);
+}
+function openEditPage(type,id){
+  setTopMode('edit');
+  editId = type === 'edit' ? id : null;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('edit').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('editTitle').innerText = type === 'create' ? '新建自动推送任务' : '编辑自动推送任务';
+  resetForm();
+  if(editId){
+    const t = tasks.find(x=>x.id===id);
+    if(t){
+      document.getElementById('formTaskName').value = t.name;
+      document.getElementById('formDesc').value = t.desc;
+      document.querySelector(`input[name="scheduleType"][value="${t.scheduleType}"]`).checked = true;
+      document.getElementById('formPushTime').value = t.pushTime;
+      document.querySelector(`input[name="target"][value="${t.target}"]`).checked = true;
+      document.querySelectorAll('input[name="channel"]').forEach(c=>c.checked = t.channels.includes(c.value));
+      if(t.scheduleType === '指定时间段推送' && t.dateText.includes('~')){
+        const [s,e] = t.dateText.split('~');
+        document.getElementById('formStartDate').value = s;
+        document.getElementById('formEndDate').value = e;
+      }
+      if(t.scheduleType === '指定周几推送'){
+        const weeks = t.dateText.split('、');
+        document.querySelectorAll('input[name="week"]').forEach(w=>w.checked = weeks.includes(w.value));
+      }
+      changeScheduleType();
+    }
+  }
+  window.scrollTo(0,0);
+}
+function resetForm(){
+  document.getElementById('formTaskName').value = '';
+  document.getElementById('formDesc').value = '';
+  document.querySelector('input[name="scheduleType"][value="每日推送"]').checked = true;
+  document.getElementById('formStartDate').value = '';
+  document.getElementById('formEndDate').value = '';
+  document.getElementById('formPushTime').value = '';
+  document.querySelectorAll('input[name="week"]').forEach(w=>w.checked=false);
+  document.querySelector('input[name="target"][value="预约用户"]').checked = true;
+  document.querySelectorAll('input[name="channel"]').forEach(c=>c.checked=true);
+  selectedReserveGame = null; selectedFollowGame = null; selectedPeople = null;
+  document.getElementById('reserveSummary').textContent = '已选择后展示：游戏名称 / 游戏ID / 游戏状态 / 预约人数';
+  document.getElementById('followSummary').textContent = '已选择后展示：游戏名称 / 游戏ID';
+  document.getElementById('peopleSummary').textContent = '已选择后展示：人群名称 / 用户标识 / 人数';
+  changeScheduleType();
+}
+function changeScheduleType(){
+  const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  document.getElementById('dateRangeRow').style.display = type === '指定时间段推送' ? 'grid' : 'none';
+  document.getElementById('weekRow').style.display = type === '指定周几推送' ? 'grid' : 'none';
+}
+function getTomorrow(){
+  const d = new Date(); d.setDate(d.getDate()+1);
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function dayDiff(s,e){
+  return Math.floor((new Date(e) - new Date(s))/(24*3600*1000)) + 1;
+}
+function validateForm(){
+  const errors = [];
+  const name = document.getElementById('formTaskName').value.trim();
+  const scheduleType = document.querySelector('input[name="scheduleType"]:checked').value;
+  const pushTime = document.getElementById('formPushTime').value;
+  const channels = Array.from(document.querySelectorAll('input[name="channel"]:checked')).map(x=>x.value);
+  const target = document.querySelector('input[name="target"]:checked').value;
+  const tomorrow = getTomorrow();
+  if(!name) errors.push('任务名称不能为空');
+  if(!pushTime) errors.push('请选择固定时间点');
+  if(channels.length === 0) errors.push('请至少选择一个推送渠道');
+  if(scheduleType === '指定时间段推送'){
+    const s = document.getElementById('formStartDate').value;
+    const e = document.getElementById('formEndDate').value;
+    if(!s) errors.push('请选择开始日期');
+    if(!e) errors.push('请选择结束日期');
+    if(s && s < tomorrow) errors.push('开始日期最早只能选择明天');
+    if(s && e && e < s) errors.push('结束日期不能早于开始日期');
+    if(s && e && dayDiff(s,e) < 3) errors.push('指定时间段推送最短需要覆盖3天');
+  }
+  if(scheduleType === '指定周几推送'){
+    const weeks = Array.from(document.querySelectorAll('input[name="week"]:checked')).map(x=>x.value);
+    if(weeks.length === 0) errors.push('请至少选择一个推送星期');
+  }
+  if(target === '预约用户' && !selectedReserveGame && !editId) errors.push('请选择预约游戏');
+  if(target === '关注用户' && !selectedFollowGame && !editId) errors.push('请选择关注游戏');
+  if(target === '大数据人群' && !selectedPeople && !editId) errors.push('请先获取有效人群');
+  if(channels.includes('系统消息')){
+    if(!document.getElementById('sysTitle').value.trim()) errors.push('请填写系统消息私信标题');
+    if(!document.getElementById('sysContent').value.trim()) errors.push('请填写系统消息私信内容');
+  }
+  if(channels.includes('个推')){
+    if(!document.getElementById('pushTitle').value.trim()) errors.push('请填写个推送标题');
+    if(!document.getElementById('pushDesc').value.trim()) errors.push('请填写个推送描述');
+  }
+  return errors;
+}
+function saveTask(){
+  const errors = validateForm();
+  if(errors.length){
+    openSaveAlert('保存失败', errors.map(x => '• ' + x).join('<br>'), false);
+    return;
+  }
+  const scheduleType = document.querySelector('input[name="scheduleType"]:checked').value;
+  let dateText = '每日';
+  if(scheduleType === '指定时间段推送') dateText = document.getElementById('formStartDate').value + '~' + document.getElementById('formEndDate').value;
+  if(scheduleType === '指定周几推送') dateText = Array.from(document.querySelectorAll('input[name="week"]:checked')).map(x=>x.value).join('、');
+  const target = document.querySelector('input[name="target"]:checked').value;
+  const currentTask = editId ? tasks.find(x=>x.id===editId) : null;
+  let targetName = '';
+  if(target === '预约用户') targetName = selectedReserveGame ? selectedReserveGame.name : (currentTask ? currentTask.targetName : '');
+  if(target === '关注用户') targetName = selectedFollowGame ? selectedFollowGame.name : (currentTask ? currentTask.targetName : '');
+  if(target === '大数据人群') targetName = selectedPeople ? selectedPeople.name : (currentTask ? currentTask.targetName : '');
+  const channels = Array.from(document.querySelectorAll('input[name="channel"]:checked')).map(x=>x.value);
+  const now = new Date();
+  const yyyy = now.getFullYear(), mm = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
+  const hh = String(now.getHours()).padStart(2,'0'), mi = String(now.getMinutes()).padStart(2,'0');
+  if(editId){
+    const t = tasks.find(x=>x.id===editId);
+    Object.assign(t,{
+      name:document.getElementById('formTaskName').value.trim(),
+      desc:document.getElementById('formDesc').value.trim(),
+      channels,target,targetName,scheduleType,dateText,pushTime:document.getElementById('formPushTime').value,
+      modifier:'当前用户',modifyTime:`${yyyy}-${mm}-${dd} ${hh}:${mi}`
+    });
+    openSaveAlert('保存成功', '编辑任务已保存', true);
+  }else{
+    const newId = String(Math.max(...tasks.map(t=>Number(t.id))) + 1);
+    tasks.unshift({
+      id:newId,
+      name:document.getElementById('formTaskName').value.trim(),
+      desc:document.getElementById('formDesc').value.trim(),
+      channels,target,targetName,scheduleType,dateText,pushTime:document.getElementById('formPushTime').value,
+      status:'待生效',
+      creator:'当前用户',
+      createTime:`${yyyy}-${mm}-${dd} ${hh}:${mi}`,
+      createDate:`${yyyy}-${mm}-${dd}`,
+      modifier:'--',
+      modifyTime:'--',
+      lastResult:'未执行'
+    });
+    openSaveAlert('保存成功', '新增任务成功，状态默认为待生效', true);
+  }
+  renderTasks();
+}
+function toggleTaskStatus(id){
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  if(t.status === '已暂停'){
+    t.status = '已生效';
+    showToast('任务已重新生效');
+  }else{
+    t.status = '已暂停';
+    showToast('任务已暂停');
+  }
+  renderTasks();
+}
+function renderLogs(data = logs){
+  const body = document.getElementById('logTableBody');
+  body.innerHTML = '';
+  if(!data.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="10">暂无符合条件的日志信息</td></tr>';
+    return;
+  }
+  data.forEach(l=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${l.id}</td><td>${l.taskId}</td><td>${l.taskName}</td><td>${l.plan}</td><td>${l.actualStart}</td><td>${l.actualEnd}</td><td>${l.channel}</td><td>${formatLogTargetDisplay(l)}</td><td><span class="status ${resultClass(l.status)}">${l.status}</span></td><td>${l.count}</td>`;
+    body.appendChild(tr);
+  });
+}
+function filterLogs(){
+  const id = document.getElementById('logTaskId').value.trim();
+  const name = document.getElementById('logTaskName').value.trim();
+  const status = document.getElementById('logStatus').value;
+  const channel = document.getElementById('logChannel').value;
+  const start = document.getElementById('logStartDate').value;
+  const end = document.getElementById('logEndDate').value;
+  const data = logs.filter(l=>{
+    if(id && !l.taskId.includes(id)) return false;
+    if(name && !l.taskName.includes(name)) return false;
+    if(status !== '全部' && l.status !== status) return false;
+    if(channel !== '全部' && l.channel !== channel) return false;
+    if(start && l.date < start) return false;
+    if(end && l.date > end) return false;
+    return true;
+  });
+  renderLogs(data);
+}
+function resetLogFilter(){
+  ['logTaskId','logTaskName','logStartDate','logEndDate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('logStatus').value='全部';
+  document.getElementById('logChannel').value='全部';
+  renderLogs();
+}
+function openTaskLog(taskId){
+  showTabPage('log');
+  document.getElementById('logTaskId').value = taskId;
+  document.getElementById('logTaskName').value = '';
+  document.getElementById('logStatus').value = '全部';
+  document.getElementById('logChannel').value = '全部';
+  document.getElementById('logStartDate').value = '';
+  document.getElementById('logEndDate').value = '';
+  filterLogs();
+}
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function showFollowSingle(){document.getElementById('followSingle').style.display='block';document.getElementById('followBatch').style.display='none'}
+function showFollowBatch(){document.getElementById('followSingle').style.display='none';document.getElementById('followBatch').style.display='block'}
+function mockFollowGame(){
+  document.getElementById('followGameId').value = document.getElementById('followGameId').value || '1024';
+  document.getElementById('followGameName').value = '洛克王国：世界';
+}
+function confirmFollowGame(){
+  const id = document.getElementById('followGameId').value.trim();
+  const name = document.getElementById('followGameName').value.trim();
+  const batch = document.getElementById('followBatchIds').value.trim();
+  if(document.getElementById('followBatch').style.display !== 'none' && batch){
+    selectedFollowGame = {id:'批量', name:'批量游戏ID'};
+    document.getElementById('followSummary').textContent = '已选择：批量游戏ID';
+  }else if(id && name){
+    selectedFollowGame = {id,name};
+    document.getElementById('followSummary').textContent = `已选择：${name}，游戏ID：${id}`;
+  }else{
+    showToast('请先获取有效游戏');
+    return;
+  }
+  closeModal('followGameModal');
+}
+function clearFollowGame(){selectedFollowGame=null;document.getElementById('followSummary').textContent='已选择后展示：游戏名称 / 游戏ID'}
+function mockReserveGame(){
+  document.getElementById('reserveGameId').value = document.getElementById('reserveGameId').value || '1';
+  document.getElementById('reserveGameName').value = '超能战警对街头霸王';
+  document.getElementById('reserveGameStatus').value = '下架';
+  document.getElementById('reserveGameCount').value = '6091';
+}
+function confirmReserveGame(){
+  const id = document.getElementById('reserveGameId').value.trim();
+  const name = document.getElementById('reserveGameName').value.trim();
+  if(!id || !name){showToast('请先获取有效预约游戏');return}
+  selectedReserveGame = {id,name,status:document.getElementById('reserveGameStatus').value,count:document.getElementById('reserveGameCount').value};
+  document.getElementById('reserveSummary').textContent = `已选择：${name}，游戏ID：${id}，状态：${selectedReserveGame.status}，预约人数：${selectedReserveGame.count}`;
+  closeModal('reserveGameModal');
+}
+function clearReserveGame(){selectedReserveGame=null;document.getElementById('reserveSummary').textContent='已选择后展示：游戏名称 / 游戏ID / 游戏状态 / 预约人数'}
+function mockPeople(){
+  const name = document.getElementById('peopleNameInput').value.trim() || 'delta_active_user';
+  document.getElementById('peopleNameInput').value = name;
+  document.getElementById('peopleDisplay').value = '三角洲活跃召回人群';
+  document.getElementById('peopleKey').value = 'uid';
+  document.getElementById('peopleCount').value = '50000';
+}
+function confirmPeople(){
+  const name = document.getElementById('peopleNameInput').value.trim();
+  const count = document.getElementById('peopleCount').value.trim();
+  if(!name || !count){showToast('请先获取有效人群');return}
+  selectedPeople = {name,count};
+  document.getElementById('peopleSummary').textContent = `已选择：${name}，用户标识：uid，人数：${count}`;
+  closeModal('peopleModal');
+}
+
+let trialGroups = [
+  {name:'论坛-综合/氛围', users:'10001,gt_a001;10002,gt_a002'},
+  {name:'玩家帖运营', users:'10011,gt_b011;10012,gt_b012'},
+  {name:'活动组', users:'10021,gt_c021;10022,gt_c022'},
+  {name:'楚河试推', users:'10031,gt_d031'},
+  {name:'PC模块', users:'10041,gt_e041;10042,gt_e042'}
+];
+let currentTrialTaskId = '';
+let currentTrialTaskName = '';
+
+function openTrialModal(taskId, taskName){
+  currentTrialTaskId = taskId;
+  currentTrialTaskName = taskName;
+  document.getElementById('trialTaskInfo').textContent = taskId + ' / ' + taskName;
+  document.getElementById('trialUidInput').value = '';
+  document.getElementById('trialPushUsers').value = '';
+  renderTrialGroups();
+  openModal('trialModal');
+}
+function renderTrialGroups(){
+  const body = document.getElementById('trialGroupTableBody');
+  body.innerHTML = '';
+  if(!trialGroups.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="2">暂无试推分组</td></tr>';
+    return;
+  }
+  trialGroups.forEach((g, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${g.name}</td><td class="table-actions"><a onclick="editTrialGroup(${idx})">编辑</a><a onclick="useTrialGroup(${idx})">使用</a><a onclick="deleteTrialGroup(${idx})">删除</a></td>`;
+    body.appendChild(tr);
+  });
+}
+function mockTrialFetch(){
+  const val = document.getElementById('trialUidInput').value.trim();
+  if(!val){
+    showToast('请先填写UID');
+    return;
+  }
+  const lines = val.split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,100);
+  const mapped = lines.map((uid, i) => `${uid},gt_mock_${String(i+1).padStart(3,'0')}`);
+  document.getElementById('trialPushUsers').value = mapped.join(';');
+  showToast('已获取试推参数');
+}
+function useTrialGroup(idx){
+  const g = trialGroups[idx];
+  document.getElementById('trialPushUsers').value = g.users;
+  showToast(`已使用分组：${g.name}`);
+}
+function editTrialGroup(idx){
+  const g = trialGroups[idx];
+  const name = prompt('编辑试推分组名称', g.name);
+  if(name === null) return;
+  const users = prompt('编辑试推分组用户', g.users);
+  if(users === null) return;
+  trialGroups[idx] = {name: name || g.name, users: users || g.users};
+  renderTrialGroups();
+  showToast('试推分组已更新');
+}
+function deleteTrialGroup(idx){
+  if(!confirm('确认删除该试推分组吗？')) return;
+  trialGroups.splice(idx,1);
+  renderTrialGroups();
+  showToast('试推分组已删除');
+}
+function addTrialGroup(){
+  const name = prompt('请输入试推分组名称');
+  if(!name) return;
+  const users = prompt('请输入试推分组用户（格式：UID,GTDEVICE;UID,GTDEVICE）');
+  if(!users) return;
+  trialGroups.push({name, users});
+  renderTrialGroups();
+  showToast('试推分组已新增');
+}
+function confirmTrialPush(){
+  const users = document.getElementById('trialPushUsers').value.trim();
+  if(!users){
+    showToast('请先填写或获取推送用户');
+    return;
+  }
+  openSaveAlert('试推成功', `已对任务 ${currentTrialTaskId}（${currentTrialTaskName}）发起试推。<br>试推用户：${users}`, false);
+  closeModal('trialModal');
+}
+
+(function init(){
+  const tomorrow = getTomorrow();
+  document.getElementById('formStartDate').min = tomorrow;
+  document.getElementById('formEndDate').min = tomorrow;
+  renderTasks();
+  renderLogs();
+})();
+</script>
+</body>
+</html>
